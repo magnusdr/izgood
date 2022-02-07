@@ -1,0 +1,47 @@
+{
+  "name": "izgood",
+  "version": "1.0.0",
+  "description": "Client side validation with React hooks",
+  "main": "dist/cjs/index.js",
+  "module": "dist/esm/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "rollup": "rollup -c",
+    "example": "cd example && npm install && npm run dev"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/magnusdr/izgood.git"
+  },
+  "keywords": [
+    "react",
+    "hooks",
+    "validation",
+    "html",
+    "form",
+    "formdata"
+  ],
+  "author": "magnusdr",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/magnusdr/izgood/issues"
+  },
+  "homepage": "https://github.com/magnusdr/izgood#readme",
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^21.0.1",
+    "@rollup/plugin-node-resolve": "^13.1.3",
+    "@rollup/plugin-typescript": "^8.3.0",
+    "@types/react": "^17.0.38",
+    "rollup": "^2.67.1",
+    "rollup-plugin-dts": "^4.1.0",
+    "rollup-plugin-peer-deps-external": "^2.2.4",
+    "rollup-plugin-terser": "^7.0.2",
+    "typescript": "^4.5.5"
+  },
+  "peerDependencies": {
+    "react": "^17.0.2"
+  }
+}
