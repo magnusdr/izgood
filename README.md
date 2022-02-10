@@ -47,10 +47,37 @@ export default function GiftYourFriend() {
 }
 ```
 
+If you prefer doing the validation on render instead of invoking `validate` manually, you could use underlying `izgood(formdata, rules)` directly instead. This could be handy if you render a final summary of your superlarge form in a new dialog/modal that simply gets the FormData as a prop from a parent component.
+
+```jsx
+import { izgood, izNotEmpty } from "izgood";
+
+export default function GiftSummary({ formdata }: { formdata: FormData }) {
+  const formerrors = izgood(formdata, [
+    ["email", izNotEmpty],
+    ["gift_code", izNotEmpty, "Empty gift iz kinda evil? 🙄"],
+  ]);
+
+  const errors = formerrors?.map((e, i) => <li key={i}>{e.message}</li>);
+
+  return (
+    <div>
+      <h1>Summary of your gift</h1>
+      <input disabled value={formdata.get("email")} name="email" />
+      <input disabled value={formdata.get("gift_code")} name="gift_code" />
+      <ul>{errors}</ul>
+    </div>
+  );
+}
+```
+
 ## API Reference
 
 ```js
-const [validate, NotGood] = useNotGood(rules);
+const [validate, NotGood, isInvalid] = useNotGoodLazy(rules);
+
+// or, for running validation on render
+const formerrors = izgood(formdata, rules);
 ```
 
 ### `rules` format

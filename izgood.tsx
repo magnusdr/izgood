@@ -16,12 +16,15 @@ type ValidationRuleTuple = [
 
 type Rules = (ValidationRule | ValidationRuleTuple)[];
 
-type FormError = {
+export type FormError = {
   name: string;
   message: string;
 };
 
-function izgood(formdata: FormData, rules: Rules): FormError[] | undefined {
+export function izgood(
+  formdata: FormData,
+  rules: Rules
+): FormError[] | undefined {
   let errors: FormError[] = [];
 
   for (let i = 0; i < rules.length; i++) {
@@ -83,7 +86,7 @@ function NotGood({ name, errors, className, ...restProps }: NotGoodProps) {
   return <></>;
 }
 
-export default function useNotGood(
+export function useNotGood(
   rules: Rules
 ): [(d: FormData) => boolean, typeof NotGood] {
   const [errors, set_errors] = useState<FormError[] | undefined>();
