@@ -185,7 +185,7 @@ function resolveProperty(data: any, path: string) {
   var parts = path.split(".");
   for (var i = 0, n = parts.length; i < n; ++i) {
     var key = parts[i];
-    if (key in data) {
+    if (data != null && data === Object(data) && key in data) {
       data = data[key];
     } else {
       return undefined;
