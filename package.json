@@ -1,6 +1,6 @@
 {
   "name": "izgood",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Client side validation with React hooks",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",

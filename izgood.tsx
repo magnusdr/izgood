@@ -33,7 +33,7 @@ export function izgood(formdata: FormData, rules: Rules): ValidationError[] {
     let validation_result = rule.validator(
       formdata instanceof FormData
         ? formdata.get(rule.name)
-        : formdata[rule.name]
+        : resolveProperty(formdata, rule.name)
     );
     if (typeof validation_result === "string" || validation_result === false) {
       errors.push({
@@ -68,7 +68,10 @@ function ErrorMessage({
     if (name) {
       filtered_errors = errors.filter((e) => e.name === name);
     }
-    if (filtered_errors.length === 1 || onlyFirstError) {
+    if (
+      filtered_errors.length === 1 ||
+      (filtered_errors.length > 1 && onlyFirstError)
+    ) {
       return (
         <div className={`izgood-error ${className}`} {...restProps}>
           {filtered_errors[0].message}
@@ -171,3 +174,22 @@ export const izMoreThan =
       return `This is an invalid number. Enter a number larger than ${min}.`;
     }
   };
+
+/* 
+    Helper function to access nested object properties by string
+    Like this: resolveProperty(data, "user.contact.email")
+*/
+function resolveProperty(data: any, path: string) {
+  path = path.replace(/\[(\w+)\]/g, ".$1"); // convert indexes to properties
+  path = path.replace(/^\./, ""); // strip a leading dot
+  var parts = path.split(".");
+  for (var i = 0, n = parts.length; i < n; ++i) {
+    var key = parts[i];
+    if (key in data) {
+      data = data[key];
+    } else {
+      return undefined;
+    }
+  }
+  return data;
+}
