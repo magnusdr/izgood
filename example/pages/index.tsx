@@ -1,6 +1,6 @@
 import type { NextPage } from "next";
 import { useCallback } from "react";
-import { izEmail, izNotEmpty, useNotGood } from "izgood";
+import { izEmail, izNotEmpty, useErrorMessageLazy } from "izgood";
 
 const Home: NextPage = () => {
   return <SignUpForm />;
@@ -9,7 +9,7 @@ const Home: NextPage = () => {
 export default Home;
 
 function SignUpForm() {
-  const [validate, NotGood] = useNotGood([
+  const [validate, ErrorMessage] = useErrorMessageLazy([
     ["username", izNotEmpty],
     ["username", izEmail],
     ["password", izNotEmpty, "An empty password would not be secure 👮"],
@@ -21,7 +21,7 @@ function SignUpForm() {
 
       const formdata = new FormData(e.target);
 
-      // Calling validate() will return false and update NotGood if all rules did not pass
+      // Calling validate() will return false and update ErrorMessage if all rules did not pass
       if (!validate(formdata)) return;
 
       // ...POST request excluded for brevity
@@ -32,9 +32,9 @@ function SignUpForm() {
   return (
     <form onSubmit={handleSubmit}>
       <input name="username" />
-      <NotGood name="username" />
+      <ErrorMessage name="username" onlyFirstError />
       <input name="password" />
-      <NotGood name="password" style={{ color: "red" }} />
+      <ErrorMessage name="password" style={{ color: "red" }} />
       <button>Sign up</button>
     </form>
   );

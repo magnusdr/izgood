@@ -1,84 +1,87 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 
 type ValidationRule = {
   name: string;
-  whats_wrong: (value: any, args: any) => string | undefined;
+  validator: (value: any) => string | boolean;
   message?: string;
-  args?: any;
 };
 
-type ValidationRuleTuple = [
-  string,
-  (value: any, args: any) => string | undefined,
-  string?,
-  any?
-];
+type ValidationRuleTuple = [string, (value: any) => string | boolean, string?];
 
 type Rules = (ValidationRule | ValidationRuleTuple)[];
 
-export type FormError = {
+export type ValidationError = {
   name: string;
   message: string;
 };
 
-export function izgood(
-  formdata: FormData,
-  rules: Rules
-): FormError[] | undefined {
-  let errors: FormError[] = [];
+export function izgood(formdata: FormData, rules: Rules): ValidationError[] {
+  let errors: ValidationError[] = [];
 
   for (let i = 0; i < rules.length; i++) {
     let rule = rules[i];
+
+    // Convert ValidationRuleTuple to ValidationRule
     if (Array.isArray(rule)) {
       rule = {
         name: rule[0],
-        whats_wrong: rule[1],
+        validator: rule[1],
         message: rule[2],
-        args: rule[3],
       };
     }
 
-    let err_msg = rule.whats_wrong(
+    let validation_result = rule.validator(
       formdata instanceof FormData
         ? formdata.get(rule.name)
-        : formdata[rule.name],
-      rule.args
+        : formdata[rule.name]
     );
-    if (err_msg) {
+    if (typeof validation_result === "string" || validation_result === false) {
       errors.push({
         name: rule.name,
-        message: rule.message ?? err_msg,
+        message:
+          rule.message ??
+          (validation_result === false ? "Invalid input" : validation_result),
       });
     }
   }
 
-  return errors.length === 0 ? undefined : errors;
+  return errors;
 }
 
-type NotGoodProps = {
+type ErrorMessageProps = {
+  errors?: ValidationError[];
   name?: string;
-  errors?: FormError[];
+  onlyFirstError?: boolean;
   className?: string;
   [key: string]: any;
 };
 
-function NotGood({ name, errors, className, ...restProps }: NotGoodProps) {
-  if (name === undefined) {
-    return (
-      <div className={`notgood ${className}`} {...restProps}>
-        <ul>
-          {errors?.map((e) => (
-            <li>{e.message}</li>
-          ))}
-        </ul>
-      </div>
-    );
-  } else if (errors) {
-    let my_err = errors.filter((e) => e.name === name)?.[0];
-    if (my_err) {
+function ErrorMessage({
+  errors,
+  name,
+  onlyFirstError,
+  className,
+  ...restProps
+}: ErrorMessageProps) {
+  if (errors) {
+    let filtered_errors = errors;
+    if (name) {
+      filtered_errors = errors.filter((e) => e.name === name);
+    }
+    if (filtered_errors.length === 1 || onlyFirstError) {
       return (
-        <div className={`notgood ${className}`} {...restProps}>
-          {my_err.message}
+        <div className={`izgood-error ${className}`} {...restProps}>
+          {filtered_errors[0].message}
+        </div>
+      );
+    } else if (filtered_errors.length > 1) {
+      return (
+        <div className={`izgood-error ${className}`} {...restProps}>
+          <ul>
+            {filtered_errors?.map((e, i) => (
+              <li key={i}>{e.message}</li>
+            ))}
+          </ul>
         </div>
       );
     }
@@ -86,36 +89,50 @@ function NotGood({ name, errors, className, ...restProps }: NotGoodProps) {
   return <></>;
 }
 
-export function useNotGood(
+export function useErrorStrings(formdata: FormData, rules: Rules): string[] {
+  let errors = izgood(formdata, rules);
+
+  return errors.map((e) => e.message);
+}
+
+export function useErrorMessage(
+  formdata: FormData,
   rules: Rules
-): [(d: FormData) => boolean, typeof NotGood] {
-  const [errors, set_errors] = useState<FormError[] | undefined>();
+): typeof ErrorMessage {
+  let errors = izgood(formdata, rules);
+
+  return function (props: ErrorMessageProps) {
+    return <ErrorMessage {...props} errors={errors} />;
+  };
+}
+
+export function useErrorMessageLazy(
+  rules: Rules
+): [(d: FormData) => boolean, typeof ErrorMessage, boolean] {
+  const [errors, set_errors] = useState<ValidationError[]>([]);
 
   const validate = useCallback(
     (formdata: FormData) => {
       let result = izgood(formdata, rules);
-      if (result === undefined) {
-        return true;
-      } else {
-        set_errors(result);
-        return false;
-      }
+      set_errors(result);
+      return result.length === 0;
     },
     [rules]
   );
 
   return [
     validate,
-    function ({ name, ...restProps }: NotGoodProps) {
-      return <NotGood name={name} errors={errors} {...restProps} />;
+    function (props: ErrorMessageProps) {
+      return <ErrorMessage {...props} errors={errors} />;
     },
+    errors.length > 0,
   ];
 }
 
 /* 
  Built in validation functions
 */
-export function izNotEmpty(value: any, args: any): string | undefined {
+export function izNotEmpty(value: any): string | boolean {
   if (typeof value === "object" && value?.size === 0) {
     return "This field cannot be empty";
   }
@@ -125,30 +142,32 @@ export function izNotEmpty(value: any, args: any): string | undefined {
 
   return value == null || stripped_value.length === 0
     ? "This field cannot be empty"
-    : undefined;
+    : true;
 }
 
-export function izEmail(value: any, args: any): string | undefined {
+export function izEmail(value: any): string | boolean {
   const regex =
     /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/;
 
   if (typeof value === "string" && value.match(regex)) {
-    return undefined;
+    return true;
   } else {
     return "Invalid email address";
   }
 }
 
-export function izMoreThan(value: any, args: any): string | undefined {
-  const valueAsNumber = parseInt(value);
+export const izMoreThan =
+  (min: number) =>
+  (value: any): string | boolean => {
+    const valueAsNumber = parseInt(value);
 
-  if (valueAsNumber !== NaN) {
-    if (args.min != null && valueAsNumber < args.min) {
-      return `This has to be minimum ${args.min}`;
+    if (!isNaN(valueAsNumber)) {
+      if (valueAsNumber <= min) {
+        return `Number has to be minimum ${min}`;
+      } else {
+        return true;
+      }
     } else {
-      return undefined;
+      return `This is an invalid number. Enter a number larger than ${min}.`;
     }
-  } else {
-    return `This has to be minimum ${args.min}`;
-  }
-}
+  };

@@ -1,6 +1,6 @@
 {
   "name": "izgood",
-  "version": "1.2.1",
+  "version": "2.0.0",
   "description": "Client side validation with React hooks",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
@@ -26,6 +26,7 @@
   ],
   "author": "magnusdr",
   "license": "MIT",
+  "sideEffects": false,
   "bugs": {
     "url": "https://github.com/magnusdr/izgood/issues"
   },
