@@ -1,10 +1,10 @@
 {
   "name": "izgood",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Client side validation with React hooks",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
-  "types": "dist/index.d.ts",
+  "types": "dist/izgood.d.ts",
   "files": [
     "dist"
   ],
