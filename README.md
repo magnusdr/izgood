@@ -55,15 +55,15 @@ export default function GiftYourFriend() {
 }
 ```
 
-If you prefer doing the validation on render instead of invoking `validate` manually, you could use underlying `useErrorMessage(formdata, rules)` directly instead.
+If you prefer doing the validation on render instead of invoking `validate` manually, you could use underlying `useErrorMessage(formdata, rules)` or `useErrorStrings(formdata, rules)` directly instead.
 
 This could be handy if you render a final summary of your superlarge form in a new dialog/modal that simply gets the FormData as a prop from a parent component.
 
 ```jsx
-import { useErrorMessage, izNotEmpty } from "izgood";
+import { useErrorStrings, izNotEmpty } from "izgood";
 
 export default function GiftSummary({ formdata }) {
-  const ErrorMessage = useErrorMessage(formdata, [
+  const errors = useErrorStrings(formdata, [
     ["email", izNotEmpty],
     ["gift_code", izNotEmpty, "Empty gift iz kinda evil? 🙄"],
   ]);
@@ -71,10 +71,11 @@ export default function GiftSummary({ formdata }) {
   return (
     <div>
       <h1>Summary of your gift</h1>
-      <input disabled value={formdata.get("email")} name="email" />
-      <ErrorMessage name="email" />
-      <input disabled value={formdata.get("gift_code")} name="gift_code" />
-      <ErrorMessage name="gift_code" />
+      {/* ...some fancy UI summarizing form */}
+      {errors.map((e) => (
+        <div>{e}</div>
+      ))}
+      <button disabled={errors.length > 0}>Submit</button>
     </div>
   );
 }
@@ -89,7 +90,7 @@ const [validate, ErrorMessage] = useErrorMessageLazy(rules);
 const ErrorMessage = useErrorMessage(rules);
 
 // or, if you want error strings instead of component
-const ErrorMessage = useErrorStrings(rules);
+const errors = useErrorStrings(rules);
 ```
 
 ### `rules` format
