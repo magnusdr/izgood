@@ -84,10 +84,11 @@ export default function GiftSummary({ formdata }) {
 ## API Reference
 
 ```js
-const [validate, ErrorMessage, isInvalid] = useErrorMessageLazy(rules);
+const [validate, ErrorMessage, isInvalid, hasError] =
+  useErrorMessageLazy(rules);
 
 // or, for running validation on render
-const [ErrorMessage, isInvalid] = useErrorMessage(formdata, rules);
+const [ErrorMessage, isInvalid, hasError] = useErrorMessage(formdata, rules);
 
 // or, if you want error strings instead of component
 const errors = useErrorStrings(formdata, rules);
@@ -160,3 +161,13 @@ Whether you choose to give this component an extra `className`s, it always has `
   color: red;
 }
 ```
+
+### The `hasError` callback
+
+`validate` has the following function signature:
+
+```ts
+function hasError(name: string): boolean;
+```
+
+It can be used to conditionally render things based on validity of one field, instead of the total validity

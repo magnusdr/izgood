@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useState } from "react";
 
 type ValidationRule = {
   name: string;
@@ -89,7 +89,7 @@ function ErrorMessage({
       );
     }
   }
-  return undefined;
+  return <></>;
 }
 
 export function useErrorStrings(formdata: FormData, rules: Rules): string[] {
@@ -101,15 +101,30 @@ export function useErrorStrings(formdata: FormData, rules: Rules): string[] {
 export function useErrorMessage(
   formdata: FormData,
   rules: Rules
-): [typeof ErrorMessage, boolean] {
+): [typeof ErrorMessage, boolean, (name: string) => boolean] {
   let errors = izgood(formdata, rules);
 
-  return [(props) => ErrorMessage({ errors, ...props }), errors.length > 0];
+  const hasError = useCallback((name: string) => {
+    return errors.filter((e) => e.name === name).length > 0;
+  }, []);
+
+  return [
+    function (props: ErrorMessageProps) {
+      return <ErrorMessage {...props} errors={errors} />;
+    },
+    errors.length > 0,
+    hasError,
+  ];
 }
 
 export function useErrorMessageLazy(
   rules: Rules
-): [(d: FormData) => boolean, typeof ErrorMessage, boolean] {
+): [
+  (d: FormData) => boolean,
+  typeof ErrorMessage,
+  boolean,
+  (name: string) => boolean
+] {
   const [errors, set_errors] = useState<ValidationError[]>([]);
 
   const validate = useCallback(
@@ -121,10 +136,17 @@ export function useErrorMessageLazy(
     [rules]
   );
 
+  const hasError = useCallback((name: string) => {
+    return errors.filter((e) => e.name === name).length > 0;
+  }, []);
+
   return [
     validate,
-    (props) => ErrorMessage({ errors, ...props }),
+    function (props: ErrorMessageProps) {
+      return <ErrorMessage {...props} errors={errors} />;
+    },
     errors.length > 0,
+    hasError,
   ];
 }
 
