@@ -101,12 +101,15 @@ export function useErrorStrings(formdata: FormData, rules: Rules): string[] {
 export function useErrorMessage(
   formdata: FormData,
   rules: Rules
-): typeof ErrorMessage {
+): [typeof ErrorMessage, boolean] {
   let errors = izgood(formdata, rules);
 
-  return function (props: ErrorMessageProps) {
-    return <ErrorMessage {...props} errors={errors} />;
-  };
+  return [
+    function (props: ErrorMessageProps) {
+      return <ErrorMessage {...props} errors={errors} />;
+    },
+    errors.length > 0,
+  ];
 }
 
 export function useErrorMessageLazy(

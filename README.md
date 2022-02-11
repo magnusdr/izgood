@@ -26,7 +26,7 @@ export default function GiftYourFriend() {
       e.preventDefault();
 
       const formdata = FormData(e.target);
-      if (validate(formdata)) {
+      if (!validate(formdata)) {
         return;
       }
 
@@ -84,13 +84,13 @@ export default function GiftSummary({ formdata }) {
 ## API Reference
 
 ```js
-const [validate, ErrorMessage] = useErrorMessageLazy(rules);
+const [validate, ErrorMessage, isInvalid] = useErrorMessageLazy(rules);
 
 // or, for running validation on render
-const ErrorMessage = useErrorMessage(rules);
+const [ErrorMessage, isInvalid] = useErrorMessage(formdata, rules);
 
 // or, if you want error strings instead of component
-const errors = useErrorStrings(rules);
+const errors = useErrorStrings(formdata, rules);
 ```
 
 ### `rules` format
