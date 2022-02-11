@@ -89,7 +89,7 @@ function ErrorMessage({
       );
     }
   }
-  return <></>;
+  return undefined;
 }
 
 export function useErrorStrings(formdata: FormData, rules: Rules): string[] {
@@ -104,12 +104,7 @@ export function useErrorMessage(
 ): [typeof ErrorMessage, boolean] {
   let errors = izgood(formdata, rules);
 
-  return [
-    function (props: ErrorMessageProps) {
-      return <ErrorMessage {...props} errors={errors} />;
-    },
-    errors.length > 0,
-  ];
+  return [(props) => ErrorMessage({ errors, ...props }), errors.length > 0];
 }
 
 export function useErrorMessageLazy(
@@ -128,9 +123,7 @@ export function useErrorMessageLazy(
 
   return [
     validate,
-    function (props: ErrorMessageProps) {
-      return <ErrorMessage {...props} errors={errors} />;
-    },
+    (props) => ErrorMessage({ errors, ...props }),
     errors.length > 0,
   ];
 }
