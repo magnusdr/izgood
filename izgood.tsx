@@ -104,9 +104,12 @@ export function useErrorMessage(
 ): [typeof ErrorMessage, boolean, (name: string) => boolean] {
   let errors = izgood(formdata, rules);
 
-  const hasError = useCallback((name: string) => {
-    return errors.filter((e) => e.name === name).length > 0;
-  }, []);
+  const hasError = useCallback(
+    (name: string) => {
+      return errors.filter((e) => e.name === name).length > 0;
+    },
+    [errors]
+  );
 
   return [
     function (props: ErrorMessageProps) {
@@ -136,9 +139,12 @@ export function useErrorMessageLazy(
     [rules]
   );
 
-  const hasError = useCallback((name: string) => {
-    return errors.filter((e) => e.name === name).length > 0;
-  }, []);
+  const hasError = useCallback(
+    (name: string) => {
+      return errors.filter((e) => e.name === name).length > 0;
+    },
+    [errors]
+  );
 
   return [
     validate,
