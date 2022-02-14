@@ -125,12 +125,14 @@ Rules can also be a list of tuples (arrays) for shorter syntax
 `validate` has the following function signature:
 
 ```ts
-function validate(formData: FormData): boolean;
+function validate(formData: FormData, name?: string): boolean;
 ```
 
 It returns `false` if validation failed, and `true` if all rules passed.
 
-It is supported to use regular javascript objects instead of Formdata, but you have to do some dirty type casting.
+If you provide a `name`, only matching rules will be will be checked. This enables you to do partial validations on a form. This can be handy when you want to do validation on `blur` events.
+
+It is supported to use regular javascript objects instead of Formdata, but you have to do some cheap type casting if you use Typescript.
 
 ```ts
 validate(data as any);

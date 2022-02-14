@@ -30,17 +30,17 @@ export function izgood(formdata: FormData, rules: Rules): ValidationError[] {
       };
     }
 
-    let validation_result = rule.validator(
+    let validationResult = rule.validator(
       formdata instanceof FormData
         ? formdata.get(rule.name)
         : resolveProperty(formdata, rule.name)
     );
-    if (typeof validation_result === "string" || validation_result === false) {
+    if (typeof validationResult === "string" || validationResult === false) {
       errors.push({
         name: rule.name,
         message:
           rule.message ??
-          (validation_result === false ? "Invalid input" : validation_result),
+          (validationResult === false ? "Invalid input" : validationResult),
       });
     }
   }
@@ -64,24 +64,24 @@ function ErrorMessage({
   ...restProps
 }: ErrorMessageProps) {
   if (errors) {
-    let filtered_errors = errors;
+    let filteredErrors = errors;
     if (name) {
-      filtered_errors = errors.filter((e) => e.name === name);
+      filteredErrors = errors.filter((e) => e.name === name);
     }
     if (
-      filtered_errors.length === 1 ||
-      (filtered_errors.length > 1 && onlyFirstError)
+      filteredErrors.length === 1 ||
+      (filteredErrors.length > 1 && onlyFirstError)
     ) {
       return (
         <div className={`izgood-error ${className}`} {...restProps}>
-          {filtered_errors[0].message}
+          {filteredErrors[0].message}
         </div>
       );
-    } else if (filtered_errors.length > 1) {
+    } else if (filteredErrors.length > 1) {
       return (
         <div className={`izgood-error ${className}`} {...restProps}>
           <ul>
-            {filtered_errors?.map((e, i) => (
+            {filteredErrors?.map((e, i) => (
               <li key={i}>{e.message}</li>
             ))}
           </ul>
@@ -123,18 +123,27 @@ export function useErrorMessage(
 export function useErrorMessageLazy(
   rules: Rules
 ): [
-  (d: FormData) => boolean,
+  (d: FormData, name?: string) => boolean,
   typeof ErrorMessage,
   boolean,
   (name: string) => boolean
 ] {
-  const [errors, set_errors] = useState<ValidationError[]>([]);
+  const [errors, setErrors] = useState<ValidationError[]>([]);
 
   const validate = useCallback(
-    (formdata: FormData) => {
-      let result = izgood(formdata, rules);
-      set_errors(result);
-      return result.length === 0;
+    (formdata: FormData, name?: string) => {
+      if (name) {
+        let result = izgood(formdata, rules);
+        let filteredResult = result.filter((e) => e.name === name);
+        setErrors((old) => {
+          return [...old.filter((e) => e.name !== name), ...filteredResult];
+        });
+        return result.length === 0;
+      } else {
+        let result = izgood(formdata, rules);
+        setErrors(result);
+        return result.length === 0;
+      }
     },
     [rules]
   );
@@ -164,10 +173,10 @@ export function izNotEmpty(value: any): string | boolean {
     return "This field cannot be empty";
   }
 
-  const stripped_value =
+  const strippedValue =
     value && typeof value === "string" ? value.trim() : value;
 
-  return value == null || stripped_value.length === 0
+  return value == null || strippedValue.length === 0
     ? "This field cannot be empty"
     : true;
 }
