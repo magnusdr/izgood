@@ -182,8 +182,7 @@ export function izNotEmpty(value: any): string | boolean {
 }
 
 export function izEmail(value: any): string | boolean {
-  const regex =
-    /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/;
+  const regex = /^\S+@\S+\.\S+$/;
 
   if (typeof value === "string" && value.match(regex)) {
     return true;
