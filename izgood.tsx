@@ -82,7 +82,9 @@ function findErrors<T>(data: T, rules: Rules<keyof T>): ValidationError[] {
     }
 
     const validationResult = rule.validator(
-      data instanceof FormData ? data.get(rule.name as string) : data[rule.name]
+      data instanceof FormData
+        ? data.get(rule.name as string)
+        : data?.[rule.name]
     );
     if (!validationResult) {
       errors.push({
@@ -95,9 +97,7 @@ function findErrors<T>(data: T, rules: Rules<keyof T>): ValidationError[] {
   return errors;
 }
 
-export function useValidationLazy<T extends { [key: string]: unknown }>(
-  rules: Rules<keyof T>
-): [
+export function useValidationLazy<T>(rules: Rules<keyof T>): [
   validate: (data: T, name?: string) => boolean,
   result: {
     ErrorMessage: (props: ErrorMessageProps) => JSX.Element;
@@ -110,14 +110,14 @@ export function useValidationLazy<T extends { [key: string]: unknown }>(
   const validate = useCallback(
     (data: T, name?: string) => {
       if (name) {
-        const result = findErrors(data ?? {}, rules);
+        const result = findErrors(data, rules);
         const filteredResult = result.filter((e) => e.name === name);
         setErrors((old) => {
           return [...old.filter((e) => e.name !== name), ...filteredResult];
         });
         return result.length === 0;
       } else {
-        const result = findErrors(data ?? {}, rules);
+        const result = findErrors(data, rules);
         setErrors(result);
         return result.length === 0;
       }
@@ -159,11 +159,8 @@ export function useValidationLazy<T extends { [key: string]: unknown }>(
   ];
 }
 
-export function useValidation<T extends { [key: string]: unknown }>(
-  data: T,
-  rules: Rules<keyof T>
-) {
-  const errors = findErrors(data ?? {}, rules);
+export function useValidation<T>(data: T, rules: Rules<keyof T>) {
+  const errors = findErrors(data, rules);
 
   const hasErrors = useCallback(
     (name?: string) => {
