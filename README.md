@@ -4,172 +4,145 @@
 
 ## Check if data `izgood` in three simple steps! ✨
 
-1. Use React hook `const [validate, ErrorMessage] = useErrorMessageLazy(rules)`
+1. Use React hook `const [validate, { ErrorMessage }] = useValidationLazy(rules)`
 1. Place the `<ErrorMessage />` components where you want the error messages to appear
 1. Use the `validate(formdata)` callback before submitting your form to the API. It returns `false` if data iz not good.
 
-Replace `useErrorMessageLazy(rules)` with `useErrorMessage(rules)` if you want validation update on each render!
+Replace `useValidationLazy(rules)` with `useValidation(rules)` if you want validation on each render!
 
-## Example usage
+> _No dependencies and tiny bundle size ([1.4kB minified + gzipped](https://bundlephobia.com/package/izgood))! 🧑‍💻_
 
-```jsx
-import { useErrorMessageLazy, izNotEmpty } from "izgood";
+## API Reference 📝
 
-export default function GiftYourFriend() {
-  const [validate, ErrorMessage] = useErrorMessageLazy([
-    ["email", izNotEmpty],
-    ["gift_code", izNotEmpty, "Empty gift iz kinda evil? 🙄"],
-  ]);
-
-  const handleSubmit = useCallback(
-    (e) => {
-      e.preventDefault();
-
-      const formdata = FormData(e.target);
-      if (!validate(formdata)) {
-        return;
-      }
-
-      // ...API request hidden for brevity
-    },
-    [validate]
-  );
-
-  return (
-    <div>
-      <h1>Send a gift to your friend!</h1>
-      <form onSubmit={handleSubmit}>
-        {/* Sprinkle beautiful error messages around 
-            your form */}
-        <input name="email" />
-        <ErrorMessage name="email" />
-        <input name="gift_code" />
-        <ErrorMessage name="gift_code" />
-
-        {/* Or, you could just omit "name" to get 
-            all errors in one list at the bottom */}
-        <ErrorMessage />
-      </form>
-    </div>
-  );
-}
-```
-
-If you prefer doing the validation on render instead of invoking `validate` manually, you could use underlying `useErrorMessage(formdata, rules)` or `useErrorStrings(formdata, rules)` directly instead.
-
-This could be handy if you render a final summary of your superlarge form in a new dialog/modal that simply gets the FormData as a prop from a parent component.
-
-```jsx
-import { useErrorStrings, izNotEmpty } from "izgood";
-
-export default function GiftSummary({ formdata }) {
-  const errors = useErrorStrings(formdata, [
-    ["email", izNotEmpty],
-    ["gift_code", izNotEmpty, "Empty gift iz kinda evil? 🙄"],
-  ]);
-
-  return (
-    <div>
-      <h1>Summary of your gift</h1>
-      {/* ...some fancy UI summarizing form */}
-      {errors.map((e) => (
-        <div>{e}</div>
-      ))}
-      <button disabled={errors.length > 0}>Submit</button>
-    </div>
-  );
-}
-```
-
-## API Reference
-
-```js
-const [validate, ErrorMessage, isInvalid, hasError] =
-  useErrorMessageLazy(rules);
-
-// or, for running validation on render
-const [ErrorMessage, isInvalid, hasError] = useErrorMessage(formdata, rules);
-
-// or, if you want error strings instead of component
-const errors = useErrorStrings(formdata, rules);
-```
-
-### `rules` format
-
-Rules is a list of objects
+### `type Rules`
 
 ```ts
 type ValidationRule = {
-  name: string; // The name of the <input /> field to validate
+  name: string; // Name or path to the validation value (eg. "user.email" or "firstName")
   validator: (value: any) => string | boolean;
-  message?: string; // Optional custom error message
+  errorMessage?: string; // Optional custom error message
+};
+
+type ValidationRuleTuple = [
+  name: string,
+  validator: (value: any) => string | boolean,
+  errorMessage?: string
+];
+
+type Rules = (ValidationRule | ValidationRuleTuple)[];
+```
+
+`izgood` comes with some built-in `validator` functions:
+
+- `izNotEmpty`,
+- `izEmail`
+- `izMoreThan(min: number)`
+- ...you can easily extend this list by creating your own functions with the same signature `(value: any) => string | boolean`.
+  - `true` = input is valid.
+  - `string | false` = invalid input.
+
+### `function useValidation()`
+
+```ts
+function useValidation(
+  data: any,
+  rules: ValidationRule[]
+): {
+  ErrorMessage: (props: ErrorMessageProps) => JSX.Element;
+  hasErrors: (name?: string) => boolean;
+  getStrings: (name?: string) => string[];
 };
 ```
 
-`validator` is the actual implementation of the validation. `izgood` comes with some built-in validation functions like `izNotEmpty`, but you can extend this easily by creating your own functions with the same signature `(value: any) => string | boolean`.
-
-Returning `false` or a `string` means validation failed. The returned `string` will be used as error message if no message was specified in the rule.
-
-Rules can also be a list of tuples (arrays) for shorter syntax
+### `function useValidationLazy()`
 
 ```ts
-[
-    string, // name
-    (value: any) => string | boolean, // validator
-    string?, // message
-]
+function useValidationLazy(rules: ValidationRule[]): [
+  validate: (data: any, name?: string) => boolean,
+  {
+    ErrorMessage: (props: ErrorMessageProps) => JSX.Element;
+    hasErrors: (name?: string) => boolean;
+    getStrings: (name?: string) => string[];
+  }
+];
 ```
 
-### The `validate` callback
+- Specify a `name: string` on validation to only validate a single part of the data
 
-`validate` has the following function signature:
+## Examples
+
+### Validating nested properties in data
+
+The simplest approach is to wrap the validator function like so:
 
 ```ts
-function validate(formData: FormData, name?: string): boolean;
+const data = {
+  user: {
+    email: "john.doe@example.com",
+  },
+};
+
+const validationResult = useValidation(data, [
+  ["user", (u) => izEmail(u.email), "Please enter a valid email address"],
+]);
 ```
 
-It returns `false` if validation failed, and `true` if all rules passed.
+This will however put the errors on `"user"` instead of `"user.email"` (because `rule.name === "user"`).
 
-If you provide a `name`, only matching rules will be will be checked. This enables you to do partial validations on a form. This can be handy when you want to do validation on `blur` events.
+If you want more granular error message selection when validating nested properties, you could also go for a more modular approach by creating reusable validation hooks. The `validate` function returned from `useValidationLazy` can in fact be used as a rule inside another `useValidationLazy` hook, like this:
 
-It is supported to use regular javascript objects instead of Formdata, but you have to do some cheap type casting if you use Typescript.
+```tsx
+// The object we want to validate (a money transaction)
+const transactionData = {
+  sender: {
+    email: "john.doe@example.com",
+    fullName: "John Doe",
+    age: 29,
+  },
+  receiver: {
+    email: "jane.smith@example.com",
+    fullName: "Jane Smith",
+    age: 38,
+  },
+  value: 100,
+};
 
-```ts
-validate(data as any);
-```
+// Custom hook for validating user objects (both sender and receiver)
+const useUserValidationLazy = () =>
+  useValidationLazy([
+    ["email", izEmail],
+    ["age", izMoreThan(13), "User has to be 13 years or older!"],
+  ]);
 
-Calling this function will trigger a re-render of the ErrorMessage, automatically updating your form with beautiful error messages.
+// MyTransactionForm.tsx
+import { useValidationLazy, izNotEmpty, izMoreThan } from "izgood";
 
-### `<ErrorMessage />` component
+export default function MyTransactionForm({ transactionData }) {
+  const [izSenderGood, { ErrorMessage: SenderErrorMessage }] =
+    useUserValidationLazy();
+  const [izReceiverGood, { ErrorMessage: ReceiverErrorMessage }] =
+    useUserValidationLazy();
 
-This component takes two properties `name?: string` and `onlyFirstError?: boolean`.
+  const [validate, { ErrorMessage: TransactionErrorMessage }] =
+    useValidationLazy([
+      ["sender", izSenderGood], // <--  The `validate` functions returned from useUserValidationLazy
+      ["receiver", izReceiverGood], //  used as a rule in this useValidationLazy hook 💁‍♂️ 🪄
+      ["value", izMoreThan(0), "Value must be more than 0"],
+    ]);
 
-```jsx
-<ErrorMessage name="email" onlyFirstError />
-```
+  // Run the validation, causing the nested validation modules to be executed as well
+  const handleValidate = useCallback(() => {
+    validate(transactionData);
+  }, [validate, transactionData]);
 
-If you omit `name`, no filtering will be done, and all error messages will be displayed in a list (`<ul>`) inside the component.
-
-`onlyFirstError` makes sure only the first error message is displayed. This makes sense if you have consequential errors in the validation. If you for example first check if email is empty, and then check if the email is valid, the invalidity is a consequence of the field being empty, obviously not providing any value to the user displaying the second message.
-
-You can also pass any other property to the underlying `<div>` like `className`, `styles` etc.
-
-Whether you choose to give this component an extra `className`s, it always has `izgood-error` as a class. It has no default styling. The class is simply there for easy selection in your global CSS styles like this
-
-```css
-/* global.css */
-
-.izgood-error {
-  color: red;
+  return (
+    <div>
+      <button onClick={handleValidate}>Validate</button>
+      <SenderErrorMessage name="email" /> {/* <-- This will only render errors on "sender.email" 💡 */}
+      {/* Other render logic hidden for brevity */}
+    </div>
+  );
 }
 ```
 
-### The `hasError` callback
-
-`validate` has the following function signature:
-
-```ts
-function hasError(name: string): boolean;
-```
-
-It can be used to conditionally render things based on validity of one field, instead of the total validity
+This way, you can render `<SenderErrorMessage name="email" />` to precisely get the error message on `"sender.email"`, instead of bundling up all messages in the same `<TransactionErrorMessage name="sender" />`, rendering both `"age"` and `"email"` errors.

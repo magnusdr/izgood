@@ -1,60 +1,29 @@
-import React, { useCallback, useState } from "react";
+import React, { HTMLAttributes, useCallback, useState } from "react";
 
-type ValidationRule = {
-  name: string;
-  validator: (value: any) => string | boolean;
+type ValidationRule<Keys, T> = {
+  name: Keys;
+  validator: ValidatorFunction<T>;
   message?: string;
 };
+type ValidatorFunction<T> = (value: T) => ValidatorResult;
+type ValidatorResult = boolean;
 
-type ValidationRuleTuple = [string, (value: any) => string | boolean, string?];
+type ValidationRuleTuple<Keys, T> = [
+  name: Keys,
+  validator: ValidatorFunction<T>,
+  errorMessage?: string
+];
 
-type Rules = (ValidationRule | ValidationRuleTuple)[];
-
-export type ValidationError = {
-  name: string;
-  message: string;
-};
-
-export function izgood(formdata: FormData, rules: Rules): ValidationError[] {
-  let errors: ValidationError[] = [];
-
-  for (let i = 0; i < rules.length; i++) {
-    let rule = rules[i];
-
-    // Convert ValidationRuleTuple to ValidationRule
-    if (Array.isArray(rule)) {
-      rule = {
-        name: rule[0],
-        validator: rule[1],
-        message: rule[2],
-      };
-    }
-
-    let validationResult = rule.validator(
-      formdata instanceof FormData
-        ? formdata.get(rule.name)
-        : resolveProperty(formdata, rule.name)
-    );
-    if (typeof validationResult === "string" || validationResult === false) {
-      errors.push({
-        name: rule.name,
-        message:
-          rule.message ??
-          (validationResult === false ? "Invalid input" : validationResult),
-      });
-    }
-  }
-
-  return errors;
-}
+type Rules<Keys> =
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (ValidationRule<Keys, any> | ValidationRuleTuple<Keys, any>)[];
 
 type ErrorMessageProps = {
   errors?: ValidationError[];
   name?: string;
   onlyFirstError?: boolean;
   className?: string;
-  [key: string]: any;
-};
+} & HTMLAttributes<HTMLDivElement>;
 
 function ErrorMessage({
   errors,
@@ -92,55 +61,63 @@ function ErrorMessage({
   return <></>;
 }
 
-export function useErrorStrings(formdata: FormData, rules: Rules): string[] {
-  let errors = izgood(formdata, rules);
+type ValidationError = {
+  name: string;
+  message: string;
+};
 
-  return errors.map((e) => e.message);
+function findErrors<T>(data: T, rules: Rules<keyof T>): ValidationError[] {
+  const errors: ValidationError[] = [];
+
+  for (let i = 0; i < rules.length; i++) {
+    let rule = rules[i];
+
+    // Convert ValidationRuleTuple to ValidationRule
+    if (Array.isArray(rule)) {
+      rule = {
+        name: rule[0],
+        validator: rule[1],
+        message: rule[2],
+      };
+    }
+
+    const validationResult = rule.validator(
+      data instanceof FormData ? data.get(rule.name as string) : data[rule.name]
+    );
+    if (!validationResult) {
+      errors.push({
+        name: rule.name as string,
+        message: rule.message ?? "Invalid input",
+      });
+    }
+  }
+
+  return errors;
 }
 
-export function useErrorMessage(
-  formdata: FormData,
-  rules: Rules
-): [typeof ErrorMessage, boolean, (name: string) => boolean] {
-  let errors = izgood(formdata, rules);
-
-  const hasError = useCallback(
-    (name: string) => {
-      return errors.filter((e) => e.name === name).length > 0;
-    },
-    [errors]
-  );
-
-  return [
-    function (props: ErrorMessageProps) {
-      return <ErrorMessage {...props} errors={errors} />;
-    },
-    errors.length > 0,
-    hasError,
-  ];
-}
-
-export function useErrorMessageLazy(
-  rules: Rules
+export function useValidationLazy<T extends { [key: string]: unknown }>(
+  rules: Rules<keyof T>
 ): [
-  (d: FormData, name?: string) => boolean,
-  typeof ErrorMessage,
-  boolean,
-  (name: string) => boolean
+  validate: (data: T, name?: string) => boolean,
+  result: {
+    ErrorMessage: (props: ErrorMessageProps) => JSX.Element;
+    hasErrors: (name?: string) => boolean;
+    getStrings: (name?: string) => string[];
+  }
 ] {
   const [errors, setErrors] = useState<ValidationError[]>([]);
 
   const validate = useCallback(
-    (formdata: FormData, name?: string) => {
+    (data: T, name?: string) => {
       if (name) {
-        let result = izgood(formdata, rules);
-        let filteredResult = result.filter((e) => e.name === name);
+        const result = findErrors(data ?? {}, rules);
+        const filteredResult = result.filter((e) => e.name === name);
         setErrors((old) => {
           return [...old.filter((e) => e.name !== name), ...filteredResult];
         });
         return result.length === 0;
       } else {
-        let result = izgood(formdata, rules);
+        const result = findErrors(data ?? {}, rules);
         setErrors(result);
         return result.length === 0;
       }
@@ -148,80 +125,119 @@ export function useErrorMessageLazy(
     [rules]
   );
 
-  const hasError = useCallback(
-    (name: string) => {
-      return errors.filter((e) => e.name === name).length > 0;
+  const hasErrors = useCallback(
+    (name?: string) => {
+      if (name) {
+        return errors.filter((e) => e.name === name).length > 0;
+      } else {
+        return errors.length > 0;
+      }
+    },
+    [errors]
+  );
+
+  const getStrings = useCallback(
+    (name?: string) => {
+      if (name) {
+        return errors.filter((e) => e.name === name).map((e) => e.message);
+      } else {
+        return errors.map((e) => e.message);
+      }
     },
     [errors]
   );
 
   return [
     validate,
-    function (props: ErrorMessageProps) {
+    {
+      ErrorMessage: function (props: ErrorMessageProps) {
+        return <ErrorMessage {...props} errors={errors} />;
+      },
+      hasErrors,
+      getStrings,
+    },
+  ];
+}
+
+export function useValidation<T extends { [key: string]: unknown }>(
+  data: T,
+  rules: Rules<keyof T>
+) {
+  const errors = findErrors(data ?? {}, rules);
+
+  const hasErrors = useCallback(
+    (name?: string) => {
+      if (name) {
+        return errors.filter((e) => e.name === name).length > 0;
+      } else {
+        return errors.length > 0;
+      }
+    },
+    [errors]
+  );
+
+  const getStrings = useCallback(
+    (name?: string) => {
+      if (name) {
+        return errors.filter((e) => e.name === name).map((e) => e.message);
+      } else {
+        return errors.map((e) => e.message);
+      }
+    },
+    [errors]
+  );
+
+  return {
+    ErrorMessage: function (props: ErrorMessageProps) {
       return <ErrorMessage {...props} errors={errors} />;
     },
-    errors.length > 0,
-    hasError,
-  ];
+    hasErrors,
+    getStrings,
+  };
 }
 
 /* 
  Built in validation functions
 */
-export function izNotEmpty(value: any): string | boolean {
-  if (typeof value === "object" && value?.size === 0) {
-    return "This field cannot be empty";
+export function izNotEmpty(value: string | File): ValidatorResult {
+  if (typeof value === "string") {
+    const strippedValue =
+      value && typeof value === "string" ? value.trim() : value;
+
+    return value == null || strippedValue.length === 0 ? false : true;
+  } else if (value instanceof File) {
+    if (value?.size === 0) {
+      return false;
+    } else {
+      return true;
+    }
+  } else {
+    return false;
   }
-
-  const strippedValue =
-    value && typeof value === "string" ? value.trim() : value;
-
-  return value == null || strippedValue.length === 0
-    ? "This field cannot be empty"
-    : true;
 }
 
-export function izEmail(value: any): string | boolean {
+export function izEmail(value: string): ValidatorResult {
   const regex = /^\S+@\S+\.\S+$/;
 
   if (typeof value === "string" && value.match(regex)) {
     return true;
   } else {
-    return "Invalid email address";
+    return false;
   }
 }
 
 export const izMoreThan =
   (min: number) =>
-  (value: any): string | boolean => {
-    const valueAsNumber = parseInt(value);
+  (value: number | string): ValidatorResult => {
+    const valueAsNumber = typeof value === "string" ? parseInt(value) : value;
 
     if (!isNaN(valueAsNumber)) {
       if (valueAsNumber <= min) {
-        return `Number has to be minimum ${min}`;
+        return false;
       } else {
         return true;
       }
     } else {
-      return `This is an invalid number. Enter a number larger than ${min}.`;
+      return false;
     }
   };
-
-/* 
-    Helper function to access nested object properties by string
-    Like this: resolveProperty(data, "user.contact.email")
-*/
-function resolveProperty(data: any, path: string) {
-  path = path.replace(/\[(\w+)\]/g, ".$1"); // convert indexes to properties
-  path = path.replace(/^\./, ""); // strip a leading dot
-  var parts = path.split(".");
-  for (var i = 0, n = parts.length; i < n; ++i) {
-    var key = parts[i];
-    if (data != null && data === Object(data) && key in data) {
-      data = data[key];
-    } else {
-      return undefined;
-    }
-  }
-  return data;
-}
