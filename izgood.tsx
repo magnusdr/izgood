@@ -102,7 +102,7 @@ export function useValidationLazy<T extends { [key: string]: unknown }>(
   result: {
     ErrorMessage: (props: ErrorMessageProps) => JSX.Element;
     hasErrors: (name?: string) => boolean;
-    getStrings: (name?: string) => string[];
+    getErrors: (name?: string) => string[];
   }
 ] {
   const [errors, setErrors] = useState<ValidationError[]>([]);
@@ -136,7 +136,7 @@ export function useValidationLazy<T extends { [key: string]: unknown }>(
     [errors]
   );
 
-  const getStrings = useCallback(
+  const getErrors = useCallback(
     (name?: string) => {
       if (name) {
         return errors.filter((e) => e.name === name).map((e) => e.message);
@@ -154,7 +154,7 @@ export function useValidationLazy<T extends { [key: string]: unknown }>(
         return <ErrorMessage {...props} errors={errors} />;
       },
       hasErrors,
-      getStrings,
+      getErrors,
     },
   ];
 }
@@ -176,7 +176,7 @@ export function useValidation<T extends { [key: string]: unknown }>(
     [errors]
   );
 
-  const getStrings = useCallback(
+  const getErrors = useCallback(
     (name?: string) => {
       if (name) {
         return errors.filter((e) => e.name === name).map((e) => e.message);
@@ -192,7 +192,7 @@ export function useValidation<T extends { [key: string]: unknown }>(
       return <ErrorMessage {...props} errors={errors} />;
     },
     hasErrors,
-    getStrings,
+    getErrors,
   };
 }
 

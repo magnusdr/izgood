@@ -6,70 +6,83 @@
 
 1. Use React hook `const [validate, { ErrorMessage }] = useValidationLazy(rules)`
 1. Place the `<ErrorMessage />` components where you want the error messages to appear
-1. Use the `validate(formdata)` callback before submitting your form to the API. It returns `false` if data iz not good.
-
-Replace `useValidationLazy(rules)` with `useValidation(rules)` if you want validation on each render!
+1. Use the `validate(formdata)` callback before submitting your form to the API. It returns `false` if data iz not good. Also, beautiful error messages suddenly starts appearing in your form 💅
 
 > _No dependencies and tiny bundle size ([1.4kB minified + gzipped](https://bundlephobia.com/package/izgood))! 🧑‍💻_
 
-## API Reference 📝
+## Contents
 
-### `type Rules`
-
-```ts
-type ValidationRule = {
-  name: string; // Name or path to the validation value (eg. "user.email" or "firstName")
-  validator: (value: any) => string | boolean;
-  errorMessage?: string; // Optional custom error message
-};
-
-type ValidationRuleTuple = [
-  name: string,
-  validator: (value: any) => string | boolean,
-  errorMessage?: string
-];
-
-type Rules = (ValidationRule | ValidationRuleTuple)[];
-```
-
-`izgood` comes with some built-in `validator` functions:
-
-- `izNotEmpty`,
-- `izEmail`
-- `izMoreThan(min: number)`
-- ...you can easily extend this list by creating your own functions with the same signature `(value: any) => string | boolean`.
-  - `true` = input is valid.
-  - `string | false` = invalid input.
-
-### `function useValidation()`
-
-```ts
-function useValidation(
-  data: any,
-  rules: ValidationRule[]
-): {
-  ErrorMessage: (props: ErrorMessageProps) => JSX.Element;
-  hasErrors: (name?: string) => boolean;
-  getStrings: (name?: string) => string[];
-};
-```
-
-### `function useValidationLazy()`
-
-```ts
-function useValidationLazy(rules: ValidationRule[]): [
-  validate: (data: any, name?: string) => boolean,
-  {
-    ErrorMessage: (props: ErrorMessageProps) => JSX.Element;
-    hasErrors: (name?: string) => boolean;
-    getStrings: (name?: string) => string[];
-  }
-];
-```
-
-- Specify a `name: string` on validation to only validate a single part of the data
+- [Examples](#examples)
+  - [A simple sign up form](#a-simple-sign-up-form)
+  - [Styling the `<ErrorMessage />` component](#styling-the-errormessage--component)
+  - [Validating nested properties in data](#validating-nested-properties-in-data)
+- [API Reference 📝](#api-reference-📝)
+  - [`type Rules`](#type-rules)
+  - [`function useValidation()`](#function-usevalidation)
+  - [`function useValidationLazy()`](#function-usevalidationlazy)
 
 ## Examples
+
+### A simple sign up form
+
+```tsx
+import { izEmail, izMoreThan, izNotEmpty, useValidationLazy } from "izgood";
+import { useCallback } from "react";
+
+export default function SignUpForm() {
+  const [validate, { ErrorMessage }] = useValidationLazy([
+    ["firstName", izNotEmpty, "Please enter your first name"],
+    ["lastName", izNotEmpty, "Please enter your last name"],
+    ["email", izNotEmpty, "Please enter your email"],
+    ["email", izEmail, "Please enter a valid email"],
+    ["age", izMoreThan(13), "You have to be 13 years or older to sign up"],
+  ]);
+
+  const handleSubmit = useCallback(
+    (e) => {
+      e.preventDefault();
+
+      const formdata = new FormData(e.target);
+      const data = Object.fromEntries(formdata);
+      if (!validate(data)) return;
+
+      // ...POST request hidden for brevity
+    },
+    [validate]
+  );
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <h1>Sign up! 📝</h1>
+
+      <input name="firstName" />
+      <ErrorMessage name="firstName" />
+
+      <input name="lastName" />
+      <ErrorMessage name="lastName" />
+
+      <input name="nickName" />
+
+      <input name="email" />
+      <ErrorMessage name="email" onlyFirstError />
+
+      <input name="age" type="number" />
+      <ErrorMessage name="age" />
+
+      <button type="submit">Submit</button>
+    </form>
+  );
+}
+```
+
+### Styling the `<ErrorMessage />` component
+
+The `<ErrorMessage />` component is just a `<div>`, so any `<div>` HTML attribute can be passed to `<ErrorMessage />`. This means that you can style it however you want.
+
+- Inline: `<ErrorMessage style={{ background: 'red' }} />`
+- CSS Modules: `<ErrorMessage className={styles.errorMessage} />`
+- Global styling using built in class `.izgood-error { background: red; }`
+- Using Tailwind's `@layer` directive by adding this pattern to Tailwind `config.content`: `"./node_modules/izgood/**/*.{js,ts,jsx,tsx}"`
 
 ### Validating nested properties in data
 
@@ -146,3 +159,58 @@ export default function MyTransactionForm({ transactionData }) {
 ```
 
 This way, you can render `<SenderErrorMessage name="email" />` to precisely get the error message on `"sender.email"`, instead of bundling up all messages in the same `<TransactionErrorMessage name="sender" />`, rendering both `"age"` and `"email"` errors.
+
+## API Reference 📝
+
+### `type Rules`
+
+```ts
+type ValidationRule = {
+  name: string; // Name of the value (eg. "email" or "firstName")
+  validator: ValidatorFunction; // The function checking the value
+  errorMessage?: string; // Error message if invalid
+};
+type ValidatorFunction<T> = (value: T) => boolean;
+
+// ...or use a tuple for more shorthand syntax 🎨
+type ValidationRuleTuple = [string, ValidatorFunction, string?];
+
+type Rules = (ValidationRule | ValidationRuleTuple)[];
+```
+
+`izgood` comes with some built-in `validator` functions:
+
+- `izNotEmpty`,
+- `izEmail`
+- `izMoreThan(min: number)`
+- ...you can easily extend this list by creating your own function returning
+  - `true` on valid input
+  - `false` on invalid input.
+
+### `function useValidation()`
+
+```ts
+function useValidation(
+  data: any,
+  rules: ValidationRule[]
+): {
+  ErrorMessage: (props: ErrorMessageProps) => JSX.Element;
+  hasErrors: (name?: string) => boolean;
+  getErrors: (name?: string) => string[];
+};
+```
+
+### `function useValidationLazy()`
+
+```ts
+function useValidationLazy(rules: ValidationRule[]): [
+  validate: (data: any, name?: string) => boolean,
+  {
+    ErrorMessage: (props: ErrorMessageProps) => JSX.Element;
+    hasErrors: (name?: string) => boolean;
+    getErrors: (name?: string) => string[];
+  }
+];
+```
+
+- Specify a `name: string` on validation to only validate a single part of the data
