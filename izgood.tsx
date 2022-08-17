@@ -103,6 +103,7 @@ export function useValidationLazy<T>(rules: Rules<keyof T>): [
     ErrorMessage: (props: ErrorMessageProps) => JSX.Element;
     hasErrors: (name?: string) => boolean;
     getErrors: (name?: string) => string[];
+    reset: () => void;
   }
 ] {
   const [errors, setErrors] = useState<ValidationError[]>([]);
@@ -147,6 +148,10 @@ export function useValidationLazy<T>(rules: Rules<keyof T>): [
     [errors]
   );
 
+  const reset = useCallback(() => {
+    setErrors([])
+  }, [])
+
   return [
     validate,
     {
@@ -155,6 +160,7 @@ export function useValidationLazy<T>(rules: Rules<keyof T>): [
       },
       hasErrors,
       getErrors,
+      reset,
     },
   ];
 }
