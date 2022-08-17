@@ -209,6 +209,7 @@ function useValidationLazy(rules: ValidationRule[]): [
     ErrorMessage: (props: ErrorMessageProps) => JSX.Element;
     hasErrors: (name?: string) => boolean;
     getErrors: (name?: string) => string[];
+    reset: () => void;
   }
 ];
 ```
